@@ -1,0 +1,18 @@
+[package]
+name = "mathroborust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+nalgebra = { version = "0.32", features = ["serde-serialize"] }
+pyo3 = { version = "0.21", features = ["extension-module", "auto-initialize"] }
+
+[dev-dependencies]
+pyo3 = { version = "0.21", features = ["auto-initialize"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
