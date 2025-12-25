@@ -3,7 +3,7 @@ use mathroborust::lie::LieGroup;
 use pyo3::prelude::*;
 
 #[pymodule]
-pub fn mathrobo(module: &Bound<'_, PyModule>) -> PyResult<()> {
+pub fn mathrobors(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<PySo3>()?;
     module.add_class::<PySe3>()?;
     module.add_class::<PyCmtm>()?;
