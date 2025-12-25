@@ -1,4 +1,4 @@
-use nalgebra::{Rotation3, Vector3};
+use nalgebra::Rotation3;
 
 use crate::lie::{LieGroup, apply_linear, matrix_to_array};
 use crate::util::vector3_from_array;

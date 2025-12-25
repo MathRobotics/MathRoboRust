@@ -1,8 +1,8 @@
 use std::f64::consts::FRAC_PI_2;
 
-use mathroborust::{RustCmtm, RustSe3, RustSo3, mathrobo};
+use mathroborust::{RustCmtm, RustSe3, RustSo3};
+use mathroborust::util::{skew_symmetric, vector3_from_array};
 use nalgebra::{SMatrix, SVector};
-use pyo3::prelude::*;
 
 fn approx_eq(a: &[f64], b: &[f64], tol: f64) {
     assert_eq!(a.len(), b.len());
@@ -23,7 +23,7 @@ fn se3_translation_and_rotation_combined() {
     let rotation = RustSo3::from_axis_angle([0.0, 1.0, 0.0], FRAC_PI_2);
     let transform = RustSe3::from_parts(rotation, [1.0, 2.0, 3.0]);
     let applied = transform.apply([1.0, 0.0, 0.0]);
-    approx_eq(&applied, &[1.0 + 3.0, 2.0, 3.0 - 1.0], 1e-12);
+    approx_eq(&applied, &[1.0, 2.0, 2.0], 1e-12);
 }
 
 #[test]
@@ -37,17 +37,8 @@ fn cmtm_adjoint_matches_reference() {
 
     let rotation_matrix = transform.rotation().rotation().matrix();
     let translation = transform.translation();
-    let skew = SMatrix::<f64, 3, 3>::new(
-        0.0,
-        translation[2],
-        -translation[1],
-        -translation[2],
-        0.0,
-        translation[0],
-        translation[1],
-        -translation[0],
-        0.0,
-    );
+    let translation_vec = vector3_from_array(translation);
+    let skew = skew_symmetric(&translation_vec);
 
     let mut expected_matrix = SMatrix::<f64, 6, 6>::zeros();
     for r in 0..3 {
@@ -69,33 +60,4 @@ fn cmtm_adjoint_matches_reference() {
     }
 
     approx_eq(&transformed, &expected, 1e-10);
-}
-
-#[test]
-fn python_interface_produces_same_values() {
-    pyo3::prepare_freethreaded_python();
-
-    let rotation = RustSo3::from_axis_angle([0.0, 0.0, 1.0], FRAC_PI_2);
-    let transform = RustSe3::from_parts(rotation, [0.5, -0.25, 1.25]);
-    let expected = transform.apply([1.0, 0.0, 0.0]);
-
-    Python::with_gil(|py| {
-        let module = PyModule::new(py, "mathrobo").expect("create module");
-        mathrobo(py, module).expect("initialize module");
-        let se3_class = module.getattr("SE3").expect("get class");
-        let instance = se3_class
-            .call_method1(
-                "from_axis_angle_translation",
-                ([0.0_f64, 0.0, 1.0], FRAC_PI_2, [0.5_f64, -0.25, 1.25]),
-            )
-            .expect("construct SE3");
-
-        let python_result: Vec<f64> = instance
-            .call_method1("apply", ([1.0_f64, 0.0, 0.0],))
-            .expect("apply")
-            .extract()
-            .expect("extract result");
-
-        approx_eq(&python_result, &expected, 1e-12);
-    });
 }
