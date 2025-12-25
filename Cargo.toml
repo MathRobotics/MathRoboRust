@@ -1,0 +1,11 @@
+[package]
+name = "mathroborust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+nalgebra = { version = "0.32", features = ["serde-serialize"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
