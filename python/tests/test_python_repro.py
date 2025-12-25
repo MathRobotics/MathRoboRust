@@ -68,4 +68,110 @@ def test_python_functions_match_original_names():
 
 @pytest.mark.dev
 def test_compare_mathrobo():
-    pass
+    import mathrobo as mr
+    import numpy as np
+
+    rotation = mathrobors.SO3.from_axis_angle((0.0, 0.0, 1.0), math.pi / 2.0)
+    rotation_mr = mr.SO3.set_mat(mr.SO3.exp((0.0, 0.0, 1.0), math.pi / 2.0))
+
+    assert rotation.matrix() == rotation_mr.mat().tolist()
+    assert rotation.quaternion() == rotation_mr.quaternion().tolist()
+
+    eye = mathrobors.SO3.eye()
+    eye_mr = mr.SO3.eye()
+    assert eye.mat() == eye_mr.mat().tolist()
+
+    hat = mathrobors.SO3.hat((0.2, 0.3, 0.4))
+    hat_mr = mr.SO3.hat(np.array([0.2, 0.3, 0.4]))
+    assert hat == hat_mr.tolist()
+
+    vee = mathrobors.SO3.vee(hat)
+    vee_mr = mr.SO3.vee(hat_mr)
+    assert vee == vee_mr.tolist()
+
+    commute = mathrobors.SO3.hat_commute((0.2, 0.3, 0.4))
+    commute_mr = mr.SO3.hat_commute(np.array([0.2, 0.3, 0.4]))
+    assert commute == commute_mr.tolist()
+
+    exp = mathrobors.SO3.exp((0.1, -0.2, 0.3), None)
+    exp_mr = mr.SO3.exp(np.array([0.1, -0.2, 0.3]))
+    assert exp == exp_mr.tolist()
+
+@pytest.mark.dev
+@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
+def test_so3_exp_benchmark(benchmark, impl):
+    import numpy as np
+    import mathrobo as mr
+
+    v = (0.1, -0.2, 0.3)
+    v_np = np.array(v)
+
+    if impl == "mathrobors":
+        fn = lambda: mathrobors.SO3.exp(v, None)
+    else:
+        fn = lambda: mr.SO3.exp(v_np)
+
+    benchmark(fn)
+
+@pytest.mark.dev
+@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
+def test_so3_hat_benchmark(benchmark, impl):
+    import numpy as np
+    import mathrobo as mr
+
+    w = (0.2, 0.3, 0.4)
+    w_np = np.array(w)
+
+    if impl == "mathrobors":
+        fn = lambda: mathrobors.SO3.hat(w)
+    else:
+        fn = lambda: mr.SO3.hat(w_np)
+
+    benchmark(fn)
+
+@pytest.mark.dev
+@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
+def test_so3_vee_benchmark(benchmark, impl):
+    import numpy as np
+    import mathrobo as mr
+
+    w = (0.2, 0.3, 0.4)
+    w_np = np.array(w)
+
+    if impl == "mathrobors":
+        hat = mathrobors.SO3.hat(w)
+        fn = lambda: mathrobors.SO3.vee(hat)
+    else:
+        hat = mr.SO3.hat(w_np)
+        fn = lambda: mr.SO3.vee(hat)
+
+    benchmark(fn)
+
+@pytest.mark.dev
+@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
+def test_so3_hat_commute_benchmark(benchmark, impl):
+    import numpy as np
+    import mathrobo as mr
+
+    w = (0.2, 0.3, 0.4)
+    w_np = np.array(w)
+
+    if impl == "mathrobors":
+        fn = lambda: mathrobors.SO3.hat_commute(w)
+    else:
+        fn = lambda: mr.SO3.hat_commute(w_np)
+
+    benchmark(fn)
+
+@pytest.mark.dev
+@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
+def test_so3_eye_benchmark(benchmark, impl):
+    import mathrobo as mr
+
+    if impl == "mathrobors":
+        fn = lambda: mathrobors.SO3.eye()
+    else:
+        fn = lambda: mr.SO3.eye()
+
+    benchmark(fn)
+

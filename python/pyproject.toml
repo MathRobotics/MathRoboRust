@@ -7,6 +7,7 @@ name = "mathrobors"
 version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = [
+    "pytest"
 ]
 
 [tool.maturin]
@@ -18,7 +19,7 @@ cargo-manifest-path = "Cargo.toml"
 mathrobo = { git = "https://github.com/MathRobotics/MathRobo", rev = "develop" }
 
 [dependency-groups]
-dev = ["maturin>=1.5", "pytest>=8", "mathrobo",]
+dev = ["maturin>=1.5", "pytest-benchmark>=5.2.3", "mathrobo",]
 
 [tool.pytest.ini_options]
 addopts = "-m 'not dev'"
