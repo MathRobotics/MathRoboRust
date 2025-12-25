@@ -1,13 +1,23 @@
 use std::f64::consts::FRAC_PI_2;
 
-use mathroborust::{RustCmtm, RustSe3, RustSo3};
 use mathroborust::util::{skew_symmetric, vector3_from_array};
+use mathroborust::{RustCmtm, RustSe3, RustSo3};
 use nalgebra::{SMatrix, SVector};
 
 fn approx_eq(a: &[f64], b: &[f64], tol: f64) {
     assert_eq!(a.len(), b.len());
     for (x, y) in a.iter().zip(b.iter()) {
         assert!((x - y).abs() < tol, "expected {y}, got {x}");
+    }
+}
+
+fn approx_eq_matrix(a: &[[f64; 3]; 3], b: &[[f64; 3]; 3], tol: f64) {
+    for r in 0..3 {
+        for c in 0..3 {
+            let x = a[r][c];
+            let y = b[r][c];
+            assert!((x - y).abs() < tol, "expected {y}, got {x} at ({r},{c})");
+        }
     }
 }
 
@@ -60,4 +70,32 @@ fn cmtm_adjoint_matches_reference() {
     }
 
     approx_eq(&transformed, &expected, 1e-10);
+}
+
+#[test]
+fn so3_quaternion_roundtrip_matches_matrix() {
+    let rotation = RustSo3::from_axis_angle([0.0, 0.0, 1.0], FRAC_PI_2);
+    let quaternion = rotation.to_quaternion();
+    let rebuilt = RustSo3::from_quaternion(quaternion);
+
+    let original_matrix = rotation.to_matrix();
+    let rebuilt_matrix = rebuilt.to_matrix();
+
+    approx_eq_matrix(&original_matrix, &rebuilt_matrix, 1e-12);
+}
+
+#[test]
+fn so3_rotation_vector_log_exp_roundtrip() {
+    let vector = [0.2, -0.1, 0.3];
+    let rotation = RustSo3::from_rotation_vector(vector);
+    let recovered = rotation.to_rotation_vector();
+    approx_eq(&recovered, &vector, 1e-12);
+}
+
+#[test]
+fn hat_and_vee_are_inverses() {
+    let vector = [0.25, -0.5, 1.25];
+    let hat = RustSo3::hat(vector);
+    let recovered = RustSo3::vee(hat);
+    approx_eq(&recovered, &vector, 1e-12);
 }
