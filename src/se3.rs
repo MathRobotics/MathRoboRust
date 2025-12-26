@@ -1,4 +1,4 @@
-use nalgebra::{Matrix4, SMatrix, Translation3};
+use nalgebra::{Matrix3, Matrix4, Rotation3, SMatrix, Translation3, Vector3};
 
 use crate::{
     lie::{HasAdjoint, LieGroup, matrix_to_array},
@@ -15,6 +15,103 @@ pub struct Se3 {
 }
 
 impl Se3 {
+    /// Build an SE(3) element directly from a 4×4 homogeneous matrix.
+    /// The bottom row is assumed to be `[0, 0, 0, 1]` and the top-left
+    /// 3×3 block is interpreted as a rotation matrix.
+    pub fn from_matrix(matrix: [[f64; 4]; 4]) -> Self {
+        let flat: [f64; 16] = [
+            matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
+            matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
+            matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3],
+            matrix[3][0], matrix[3][1], matrix[3][2], matrix[3][3],
+        ];
+        let mat = Matrix4::from_row_slice(&flat);
+
+        let rotation_matrix: [[f64; 3]; 3] = [
+            [mat[(0, 0)], mat[(0, 1)], mat[(0, 2)]],
+            [mat[(1, 0)], mat[(1, 1)], mat[(1, 2)]],
+            [mat[(2, 0)], mat[(2, 1)], mat[(2, 2)]],
+        ];
+
+        let translation = [mat[(0, 3)], mat[(1, 3)], mat[(2, 3)]];
+
+        Self::from_parts(So3::from_matrix(rotation_matrix), translation)
+    }
+
+    /// Construct the Lie-algebra hat operator mapping a 6D twist vector
+    /// into a 4×4 matrix in `se(3)`.
+    pub fn hat(twist: [f64; 6]) -> [[f64; 4]; 4] {
+        let omega = Vector3::new(twist[0], twist[1], twist[2]);
+        let v = Vector3::new(twist[3], twist[4], twist[5]);
+        let mut mat = Matrix4::<f64>::zeros();
+
+        let skew = crate::util::skew_symmetric(&omega);
+        for r in 0..3 {
+            for c in 0..3 {
+                mat[(r, c)] = skew[(r, c)];
+            }
+            mat[(r, 3)] = v[r];
+        }
+
+        matrix_to_array(&mat)
+    }
+
+    /// Inverse of [`Se3::hat`], recovering a 6D twist vector from a matrix
+    /// representation in `se(3)`.
+    pub fn vee(matrix: [[f64; 4]; 4]) -> [f64; 6] {
+        let rotation_block = [
+            [matrix[0][0], matrix[0][1], matrix[0][2]],
+            [matrix[1][0], matrix[1][1], matrix[1][2]],
+            [matrix[2][0], matrix[2][1], matrix[2][2]],
+        ];
+
+        let omega = So3::vee(rotation_block);
+        [omega[0], omega[1], omega[2], matrix[0][3], matrix[1][3], matrix[2][3]]
+    }
+
+    /// Compute the exponential map from a 6D twist to an SE(3) transform.
+    /// The optional scale factor `a` can be used to scale the twist prior to
+    /// exponentiation.
+    pub fn exp(twist: [f64; 6], a: Option<f64>) -> [[f64; 4]; 4] {
+        let scale = a.unwrap_or(1.0);
+        let omega = Vector3::new(twist[0] * scale, twist[1] * scale, twist[2] * scale);
+        let v = Vector3::new(twist[3] * scale, twist[4] * scale, twist[5] * scale);
+
+        let theta = omega.norm();
+        let rotation = Rotation3::new(omega);
+        let rotation_matrix = rotation.matrix();
+
+        let mut hat = Matrix3::<f64>::zeros();
+        let mut hat_sq = Matrix3::<f64>::zeros();
+
+        if theta != 0.0 {
+            hat = crate::util::skew_symmetric(&omega);
+            hat_sq = hat * hat;
+        }
+
+        let v_matrix = if theta.abs() < 1e-12 {
+            Matrix3::<f64>::identity() + 0.5 * hat
+        } else {
+            let theta_sq = theta * theta;
+            let theta_cu = theta_sq * theta;
+            Matrix3::<f64>::identity()
+                + (1.0 - theta.cos()) / theta_sq * hat
+                + (theta - theta.sin()) / theta_cu * hat_sq
+        };
+
+        let translated = v_matrix * v;
+
+        let mut matrix = Matrix4::<f64>::identity();
+        for r in 0..3 {
+            for c in 0..3 {
+                matrix[(r, c)] = rotation_matrix[(r, c)];
+            }
+            matrix[(r, 3)] = translated[r];
+        }
+
+        matrix_to_array(&matrix)
+    }
+
     pub fn from_parts(rotation: So3, translation: [f64; 3]) -> Self {
         Self {
             rotation,

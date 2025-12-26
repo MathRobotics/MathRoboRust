@@ -39,6 +39,10 @@ uv run maturin develop --release
 uv run pytest
 ```
 
+```bash
+uv run pytest --benchmark-only -m dev --benchmark-sort=mean
+```
+
 ## Benchmark
 Roughly inspect performance for many transform calls:
 ```bash
