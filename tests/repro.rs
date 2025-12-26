@@ -21,6 +21,16 @@ fn approx_eq_matrix(a: &[[f64; 3]; 3], b: &[[f64; 3]; 3], tol: f64) {
     }
 }
 
+fn approx_eq_matrix4(a: &[[f64; 4]; 4], b: &[[f64; 4]; 4], tol: f64) {
+    for r in 0..4 {
+        for c in 0..4 {
+            let x = a[r][c];
+            let y = b[r][c];
+            assert!((x - y).abs() < tol, "expected {y}, got {x} at ({r},{c})");
+        }
+    }
+}
+
 #[test]
 fn so3_rotation_matches_expected() {
     let rotation = RustSo3::from_axis_angle([0.0, 0.0, 1.0], FRAC_PI_2);
@@ -98,4 +108,40 @@ fn hat_and_vee_are_inverses() {
     let hat = RustSo3::hat(vector);
     let recovered = RustSo3::vee(hat);
     approx_eq(&recovered, &vector, 1e-12);
+}
+
+#[test]
+fn se3_hat_and_vee_are_inverses() {
+    let twist = [0.1, -0.2, 0.3, 1.0, -2.0, 3.0];
+    let hat = RustSe3::hat(twist);
+    let recovered = RustSe3::vee(hat);
+    approx_eq(&recovered, &twist, 1e-12);
+}
+
+#[test]
+fn se3_exp_with_pure_translation_matches_expected() {
+    let twist = [0.0, 0.0, 0.0, 1.0, 2.0, 3.0];
+    let exp = RustSe3::exp(twist, None);
+    let mut expected = [[0.0_f64; 4]; 4];
+    expected[0][0] = 1.0;
+    expected[1][1] = 1.0;
+    expected[2][2] = 1.0;
+    expected[3][3] = 1.0;
+    expected[0][3] = 1.0;
+    expected[1][3] = 2.0;
+    expected[2][3] = 3.0;
+
+    approx_eq_matrix4(&exp, &expected, 1e-12);
+}
+
+#[test]
+fn se3_from_matrix_round_trip() {
+    let rotation = RustSo3::from_axis_angle([0.0, 0.0, 1.0], FRAC_PI_2);
+    let transform = RustSe3::from_parts(rotation.clone(), [0.25, -0.5, 0.75]);
+    let matrix = transform.to_matrix();
+    let rebuilt = RustSe3::from_matrix(matrix);
+
+    approx_eq_matrix4(&matrix, &rebuilt.to_matrix(), 1e-12);
+    approx_eq_matrix(&rotation.to_matrix(), &rebuilt.rotation().to_matrix(), 1e-12);
+    approx_eq(&transform.translation(), &rebuilt.translation(), 1e-12);
 }

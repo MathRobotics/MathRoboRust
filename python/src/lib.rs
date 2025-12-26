@@ -1,5 +1,6 @@
 use mathroborust::{Cmtm, Se3, So3};
 use mathroborust::lie::LieGroup;
+use nalgebra::SMatrix;
 use pyo3::prelude::*;
 
 #[pymodule]
@@ -226,6 +227,28 @@ impl PySe3 {
         }
     }
 
+    #[staticmethod]
+    pub fn from_matrix(matrix: [[f64; 4]; 4]) -> Self {
+        Self {
+            inner: Se3::from_matrix(matrix),
+        }
+    }
+
+    #[staticmethod]
+    pub fn hat(twist: [f64; 6]) -> [[f64; 4]; 4] {
+        Se3::hat(twist)
+    }
+
+    #[staticmethod]
+    pub fn vee(matrix: [[f64; 4]; 4]) -> [f64; 6] {
+        Se3::vee(matrix)
+    }
+
+    #[staticmethod]
+    pub fn exp(twist: [f64; 6], a: Option<f64>) -> [[f64; 4]; 4] {
+        Se3::exp(twist, a)
+    }
+
     pub fn apply(&self, point: [f64; 3]) -> [f64; 3] {
         self.inner.apply(point)
     }
@@ -242,13 +265,65 @@ impl PySe3 {
         }
     }
 
+    pub fn inv(&self) -> PySe3 {
+        self.inverse()
+    }
+
     pub fn matrix(&self) -> [[f64; 4]; 4] {
         self.inner.to_matrix()
+    }
+
+    pub fn mat(&self) -> [[f64; 4]; 4] {
+        self.inner.to_matrix()
+    }
+
+    #[staticmethod]
+    pub fn set_mat(matrix: [[f64; 4]; 4]) -> Self {
+        Self {
+            inner: Se3::from_matrix(matrix),
+        }
+    }
+
+    #[staticmethod]
+    pub fn eye() -> Self {
+        Self {
+            inner: Se3::identity(),
+        }
+    }
+
+    pub fn mat_inv(&self) -> [[f64; 4]; 4] {
+        self.inner.inverse().to_matrix()
+    }
+
+    pub fn mat_adj(&self) -> [[f64; 6]; 6] {
+        let adjoint = self.inner.adjoint();
+        s_matrix6_to_array(&adjoint)
+    }
+
+    pub fn mat_inv_adj(&self) -> [[f64; 6]; 6] {
+        let adjoint = self.inner.inverse().adjoint();
+        s_matrix6_to_array(&adjoint)
     }
 
     pub fn translation(&self) -> [f64; 3] {
         self.inner.translation()
     }
+
+    pub fn rotation(&self) -> PySo3 {
+        PySo3 {
+            inner: self.inner.rotation().clone(),
+        }
+    }
+}
+
+fn s_matrix6_to_array(matrix: &SMatrix<f64, 6, 6>) -> [[f64; 6]; 6] {
+    let mut out = [[0.0_f64; 6]; 6];
+    for r in 0..6 {
+        for c in 0..6 {
+            out[r][c] = matrix[(r, c)];
+        }
+    }
+    out
 }
 
 #[pyclass(name = "CMTM")]
