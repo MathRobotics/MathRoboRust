@@ -73,6 +73,7 @@ impl PySo3 {
     }
 
     #[staticmethod]
+    #[pyo3(signature = (vector, a=None))]
     pub fn exp(vector: [f64; 3], a: Option<f64>) -> [[f64; 3]; 3] {
         let scale = a.unwrap_or(1.0);
         let scaled = [vector[0] * scale, vector[1] * scale, vector[2] * scale];
@@ -80,6 +81,7 @@ impl PySo3 {
     }
 
     #[staticmethod]
+    #[pyo3(signature = (vector, a=None))]
     pub fn exp_adj(vector: [f64; 3], a: Option<f64>) -> [[f64; 3]; 3] {
         PySo3::exp(vector, a)
     }
@@ -245,6 +247,7 @@ impl PySe3 {
     }
 
     #[staticmethod]
+    #[pyo3(signature = (twist, a=None))]
     pub fn exp(twist: [f64; 6], a: Option<f64>) -> [[f64; 4]; 4] {
         Se3::exp(twist, a)
     }
