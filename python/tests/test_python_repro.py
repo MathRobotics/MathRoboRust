@@ -17,12 +17,28 @@ def approx_eq_matrix(a, b, tol=1e-12):
             assert abs(x - y) < tol, f"expected {y}, got {x} at ({r},{c})"
 
 
+def approx_eq_matrix4(a, b, tol=1e-12):
+    for r in range(4):
+        for c in range(4):
+            x = a[r][c]
+            y = b[r][c]
+            assert abs(x - y) < tol, f"expected {y}, got {x} at ({r},{c})"
+
+
 def test_python_interface_produces_same_values():
     transform = mathrobors.SE3.from_axis_angle_translation(
         (0.0, 0.0, 1.0), math.pi / 2.0, (0.5, -0.25, 1.25)
     )
     result = transform.apply((1.0, 0.0, 0.0))
     approx_eq(result, (0.5, 0.75, 1.25), 1e-12)
+
+
+def test_se3_translation_and_rotation_combined():
+    rotation = mathrobors.SO3.from_axis_angle((0.0, 1.0, 0.0), math.pi / 2.0)
+    transform = mathrobors.SE3.from_parts(rotation, (1.0, 2.0, 3.0))
+
+    applied = transform.apply((1.0, 0.0, 0.0))
+    approx_eq(applied, (1.0, 2.0, 2.0), 1e-12)
 
 
 def test_quaternion_roundtrip_preserves_matrix():
@@ -38,6 +54,39 @@ def test_hat_and_vee_functions_roundtrip_vector():
     hat = mathrobors.SO3.hat(vector)
     recovered = mathrobors.SO3.vee(hat)
     approx_eq(recovered, vector, 1e-12)
+
+
+def test_se3_hat_and_vee_are_inverses():
+    twist = (0.1, -0.2, 0.3, 1.0, -2.0, 3.0)
+    hat = mathrobors.SE3.hat(twist)
+    recovered = mathrobors.SE3.vee(hat)
+
+    approx_eq(recovered, twist, 1e-12)
+
+
+def test_se3_exp_with_pure_translation_matches_expected():
+    twist = (0.0, 0.0, 0.0, 1.0, 2.0, 3.0)
+    exp = mathrobors.SE3.exp(twist, None)
+
+    expected = (
+        (1.0, 0.0, 0.0, 1.0),
+        (0.0, 1.0, 0.0, 2.0),
+        (0.0, 0.0, 1.0, 3.0),
+        (0.0, 0.0, 0.0, 1.0),
+    )
+
+    approx_eq_matrix4(exp, expected, 1e-12)
+
+
+def test_se3_from_matrix_round_trip():
+    rotation = mathrobors.SO3.from_axis_angle((0.0, 0.0, 1.0), math.pi / 2.0)
+    transform = mathrobors.SE3.from_parts(rotation, (0.25, -0.5, 0.75))
+    matrix = transform.matrix()
+    rebuilt = mathrobors.SE3.from_matrix(matrix)
+
+    approx_eq_matrix4(matrix, rebuilt.matrix(), 1e-12)
+    approx_eq_matrix(rotation.matrix(), rebuilt.rotation().matrix(), 1e-12)
+    approx_eq(transform.translation(), rebuilt.translation(), 1e-12)
 
 
 def test_python_functions_match_original_names():
