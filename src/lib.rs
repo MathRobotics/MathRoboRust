@@ -4,7 +4,7 @@ pub mod se3;
 pub mod so3;
 pub mod util;
 
-pub use cmtm::Cmtm;
+pub use cmtm::{Cmtm, RotationalCmtm, SpatialCmtm};
 pub use se3::Se3;
 pub use so3::So3;
 
