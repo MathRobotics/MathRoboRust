@@ -20,10 +20,22 @@ impl Se3 {
     /// 3×3 block is interpreted as a rotation matrix.
     pub fn from_matrix(matrix: [[f64; 4]; 4]) -> Self {
         let flat: [f64; 16] = [
-            matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3],
-            matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3],
-            matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3],
-            matrix[3][0], matrix[3][1], matrix[3][2], matrix[3][3],
+            matrix[0][0],
+            matrix[0][1],
+            matrix[0][2],
+            matrix[0][3],
+            matrix[1][0],
+            matrix[1][1],
+            matrix[1][2],
+            matrix[1][3],
+            matrix[2][0],
+            matrix[2][1],
+            matrix[2][2],
+            matrix[2][3],
+            matrix[3][0],
+            matrix[3][1],
+            matrix[3][2],
+            matrix[3][3],
         ];
         let mat = Matrix4::from_row_slice(&flat);
 
@@ -66,7 +78,14 @@ impl Se3 {
         ];
 
         let omega = So3::vee(rotation_block);
-        [omega[0], omega[1], omega[2], matrix[0][3], matrix[1][3], matrix[2][3]]
+        [
+            omega[0],
+            omega[1],
+            omega[2],
+            matrix[0][3],
+            matrix[1][3],
+            matrix[2][3],
+        ]
     }
 
     /// Compute the exponential map from a 6D twist to an SE(3) transform.

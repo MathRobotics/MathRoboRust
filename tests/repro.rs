@@ -1,8 +1,9 @@
 use std::f64::consts::FRAC_PI_2;
 
+use mathroborust::lie::LieGroup;
 use mathroborust::util::{skew_symmetric, vector3_from_array};
-use mathroborust::{RustCmtm, RustSe3, RustSo3};
-use nalgebra::{SMatrix, SVector};
+use mathroborust::{RotationalCmtm, RustCmtm, RustSe3, RustSo3};
+use nalgebra::{DMatrix, SMatrix, SVector};
 
 fn approx_eq(a: &[f64], b: &[f64], tol: f64) {
     assert_eq!(a.len(), b.len());
@@ -83,6 +84,87 @@ fn cmtm_adjoint_matches_reference() {
 }
 
 #[test]
+fn cmtm_from_so3_matches_rotation_block() {
+    let rotation = RustSo3::from_axis_angle([0.0, 0.0, 1.0], FRAC_PI_2);
+    let adjoint = RotationalCmtm::from_so3(&rotation);
+
+    let omega = [0.25, 0.5, -1.0];
+    let rotated = adjoint.apply_omega(omega);
+    let expected = rotation.apply(omega);
+
+    approx_eq(&rotated, &expected, 1e-12);
+    approx_eq_matrix(&adjoint.to_matrix(), &rotation.to_matrix(), 1e-12);
+}
+
+#[test]
+fn cmtm_block_matrix_handles_second_order() {
+    let rotation = RustSo3::identity();
+    let derivatives = vec![[0.1, -0.2, 0.3]]; // enable second-order output
+    let adjoint = RotationalCmtm::from_so3_with_derivatives(&rotation, derivatives);
+
+    let block = adjoint.to_block_matrix(None);
+
+    // Expected 6×6 block matrix with the base rotation on both diagonal blocks
+    // and the first derivative hat block in the lower-left corner.
+    let mut expected = DMatrix::<f64>::zeros(6, 6);
+    let base = rotation.rotation().matrix();
+    let hat = skew_symmetric(&vector3_from_array([0.1, -0.2, 0.3]));
+    for r in 0..3 {
+        for c in 0..3 {
+            expected[(r, c)] = base[(r, c)];
+            expected[(r + 3, c + 3)] = base[(r, c)];
+            expected[(r + 3, c)] = hat[(r, c)];
+        }
+    }
+
+    for r in 0..6 {
+        for c in 0..6 {
+            assert!((block[(r, c)] - expected[(r, c)]).abs() < 1e-12);
+        }
+    }
+}
+
+#[test]
+fn cmtm_block_matrix_handles_third_order() {
+    // Identity rotation simplifies the expected block structure while still
+    // exercising the recursive derivative accumulation.
+    let rotation = RustSo3::identity();
+    let w0 = [0.05, -0.1, 0.2];
+    let w1 = [-0.02, 0.04, -0.08];
+    let adjoint = RotationalCmtm::from_so3_with_derivatives(&rotation, vec![w0, w1]);
+
+    let block = adjoint.to_block_matrix(None);
+
+    let mut expected = DMatrix::<f64>::zeros(9, 9);
+    let base = rotation.rotation().matrix();
+    let hat0 = skew_symmetric(&vector3_from_array(w0));
+    let hat1 = skew_symmetric(&vector3_from_array(w1));
+    let mat2 = (hat1 + hat0 * hat0) / 2.0;
+
+    // Block layout for order-3 CMTM:
+    // [ I    0    0 ]
+    // [ H0   I    0 ]
+    // [ M2   H0   I ]
+    for r in 0..3 {
+        for c in 0..3 {
+            expected[(r, c)] = base[(r, c)];
+            expected[(r + 3, c + 3)] = base[(r, c)];
+            expected[(r + 6, c + 6)] = base[(r, c)];
+
+            expected[(r + 3, c)] = hat0[(r, c)];
+            expected[(r + 6, c + 3)] = hat0[(r, c)];
+            expected[(r + 6, c)] = mat2[(r, c)];
+        }
+    }
+
+    for r in 0..9 {
+        for c in 0..9 {
+            assert!((block[(r, c)] - expected[(r, c)]).abs() < 1e-12);
+        }
+    }
+}
+
+#[test]
 fn so3_quaternion_roundtrip_matches_matrix() {
     let rotation = RustSo3::from_axis_angle([0.0, 0.0, 1.0], FRAC_PI_2);
     let quaternion = rotation.to_quaternion();
@@ -142,6 +224,10 @@ fn se3_from_matrix_round_trip() {
     let rebuilt = RustSe3::from_matrix(matrix);
 
     approx_eq_matrix4(&matrix, &rebuilt.to_matrix(), 1e-12);
-    approx_eq_matrix(&rotation.to_matrix(), &rebuilt.rotation().to_matrix(), 1e-12);
+    approx_eq_matrix(
+        &rotation.to_matrix(),
+        &rebuilt.rotation().to_matrix(),
+        1e-12,
+    );
     approx_eq(&transform.translation(), &rebuilt.translation(), 1e-12);
 }
