@@ -2,3 +2,5 @@ target/
 **/*.pyc
 __pycache__/
 *.lock
+!Cargo.lock
+!python/Cargo.lock
