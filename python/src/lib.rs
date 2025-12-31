@@ -1,5 +1,5 @@
-use mathroborust::{Cmtm, Se3, So3};
 use mathroborust::lie::LieGroup;
+use mathroborust::{Cmtm, Se3, So3};
 use nalgebra::SMatrix;
 use pyo3::prelude::*;
 
@@ -132,6 +132,11 @@ impl PySo3 {
         }
     }
 
+    #[pyo3(name = "__mul__")]
+    pub fn mul(&self, other: &PySo3) -> PyResult<PySo3> {
+        Ok(self.compose(other))
+    }
+
     pub fn inverse(&self) -> PySo3 {
         PySo3 {
             inner: self.inner.inverse(),
@@ -262,6 +267,11 @@ impl PySe3 {
         }
     }
 
+    #[pyo3(name = "__mul__")]
+    pub fn mul(&self, other: &PySe3) -> PyResult<PySe3> {
+        Ok(self.compose(other))
+    }
+
     pub fn inverse(&self) -> PySe3 {
         PySe3 {
             inner: self.inner.inverse(),
@@ -356,5 +366,16 @@ impl PyCmtm {
 
     pub fn matrix(&self) -> [[f64; 6]; 6] {
         self.inner.to_matrix()
+    }
+
+    pub fn compose(&self, other: &PyCmtm) -> PyCmtm {
+        PyCmtm {
+            inner: self.inner.compose(&other.inner),
+        }
+    }
+
+    #[pyo3(name = "__mul__")]
+    pub fn mul(&self, other: &PyCmtm) -> PyResult<PyCmtm> {
+        Ok(self.compose(other))
     }
 }

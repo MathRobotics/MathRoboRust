@@ -201,6 +201,56 @@ fn se3_hat_and_vee_are_inverses() {
 }
 
 #[test]
+fn so3_mul_matches_compose() {
+    let r1 = RustSo3::from_axis_angle([1.0, 0.0, 0.0], FRAC_PI_2);
+    let r2 = RustSo3::from_axis_angle([0.0, 1.0, 0.0], FRAC_PI_2);
+
+    let composed = r1.compose(&r2);
+    let multiplied = r1 * r2;
+
+    approx_eq_matrix(&composed.to_matrix(), &multiplied.to_matrix(), 1e-12);
+    let vector = [1.0, 2.0, 3.0];
+    approx_eq(&composed.apply(vector), &multiplied.apply(vector), 1e-12);
+}
+
+#[test]
+fn se3_mul_matches_compose() {
+    let r1 = RustSo3::from_axis_angle([0.0, 0.0, 1.0], FRAC_PI_2);
+    let t1 = [0.5, -0.25, 0.75];
+    let g1 = RustSe3::from_parts(r1, t1);
+
+    let r2 = RustSo3::from_axis_angle([0.0, 1.0, 0.0], FRAC_PI_2);
+    let t2 = [-0.3, 0.6, 0.9];
+    let g2 = RustSe3::from_parts(r2, t2);
+
+    let composed = g1.compose(&g2);
+    let multiplied = g1 * g2;
+
+    approx_eq_matrix4(&composed.to_matrix(), &multiplied.to_matrix(), 1e-12);
+    let point = [0.25, -0.5, 1.0];
+    approx_eq(&composed.apply(point), &multiplied.apply(point), 1e-12);
+}
+
+#[test]
+fn cmtm_mul_matches_compose() {
+    let r1 = RustSo3::from_axis_angle([0.0, 0.0, 1.0], FRAC_PI_2);
+    let r2 = RustSo3::from_axis_angle([0.0, 1.0, 0.0], FRAC_PI_2);
+
+    let c1 = RotationalCmtm::from_so3_with_derivatives(&r1, vec![[0.1, -0.2, 0.3]]);
+    let c2 = RotationalCmtm::from_so3_with_derivatives(&r2, vec![[-0.05, 0.15, -0.25]]);
+
+    let composed = c1.compose(&c2);
+    let multiplied = c1 * c2;
+
+    let composed_block = composed.to_block_matrix(None);
+    let multiplied_block = multiplied.to_block_matrix(None);
+
+    for (x, y) in composed_block.iter().zip(multiplied_block.iter()) {
+        assert!((x - y).abs() < 1e-12, "expected {y}, got {x}");
+    }
+}
+
+#[test]
 fn se3_exp_with_pure_translation_matches_expected() {
     let twist = [0.0, 0.0, 0.0, 1.0, 2.0, 3.0];
     let exp = RustSe3::exp(twist, None);
