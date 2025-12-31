@@ -1,4 +1,5 @@
 use nalgebra::{Matrix3, Quaternion, Rotation3, UnitQuaternion};
+use std::ops::Mul;
 
 use crate::lie::{LieGroup, apply_linear, matrix_to_array};
 use crate::util::{skew_symmetric, vector3_from_array, vector3_to_array};
@@ -169,5 +170,37 @@ impl LieGroup<3> for So3 {
 
     fn as_matrix(&self) -> nalgebra::SMatrix<f64, 3, 3> {
         self.rotation.matrix().clone_owned()
+    }
+}
+
+impl Mul for So3 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self.compose(&rhs)
+    }
+}
+
+impl<'a> Mul<&'a So3> for So3 {
+    type Output = So3;
+
+    fn mul(self, rhs: &'a So3) -> Self::Output {
+        self.compose(rhs)
+    }
+}
+
+impl<'a> Mul<So3> for &'a So3 {
+    type Output = So3;
+
+    fn mul(self, rhs: So3) -> Self::Output {
+        self.compose(&rhs)
+    }
+}
+
+impl<'a, 'b> Mul<&'a So3> for &'b So3 {
+    type Output = So3;
+
+    fn mul(self, rhs: &'a So3) -> Self::Output {
+        self.compose(rhs)
     }
 }

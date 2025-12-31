@@ -1,4 +1,5 @@
 use nalgebra::{DMatrix, SMatrix, SVector};
+use std::ops::Mul;
 
 use crate::lie::{apply_linear, matrix_to_array, HasAdjoint};
 use crate::se3::Se3;
@@ -171,6 +172,32 @@ impl<const DIM: usize> GenericCmtm<DIM> {
         }
     }
 
+    /// Compose two CMTMs by multiplying their base matrices and pairing the
+    /// derivative vectors order-wise. Missing derivative orders on either side
+    /// are treated as zero, so the resulting order matches the larger operand.
+    pub fn compose(&self, other: &Self) -> Self {
+        let matrix = self.matrix * other.matrix;
+        let max_order = usize::max(self.derivatives.len(), other.derivatives.len());
+
+        let derivatives = (0..max_order)
+            .map(|i| {
+                let left = self
+                    .derivatives
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| SVector::<f64, DIM>::zeros());
+                let right = other
+                    .derivatives
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| SVector::<f64, DIM>::zeros());
+                left + right
+            })
+            .collect();
+
+        Self { matrix, derivatives }
+    }
+
     fn mat_elem(&self, p: usize) -> SMatrix<f64, DIM, DIM> {
         if p == 0 {
             return self.matrix;
@@ -207,5 +234,37 @@ impl<const DIM: usize> GenericCmtm<DIM> {
         }
 
         mat
+    }
+}
+
+impl<const DIM: usize> Mul for GenericCmtm<DIM> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self.compose(&rhs)
+    }
+}
+
+impl<'a, const DIM: usize> Mul<&'a GenericCmtm<DIM>> for GenericCmtm<DIM> {
+    type Output = GenericCmtm<DIM>;
+
+    fn mul(self, rhs: &'a GenericCmtm<DIM>) -> Self::Output {
+        self.compose(rhs)
+    }
+}
+
+impl<'a, const DIM: usize> Mul<GenericCmtm<DIM>> for &'a GenericCmtm<DIM> {
+    type Output = GenericCmtm<DIM>;
+
+    fn mul(self, rhs: GenericCmtm<DIM>) -> Self::Output {
+        self.compose(&rhs)
+    }
+}
+
+impl<'a, 'b, const DIM: usize> Mul<&'a GenericCmtm<DIM>> for &'b GenericCmtm<DIM> {
+    type Output = GenericCmtm<DIM>;
+
+    fn mul(self, rhs: &'a GenericCmtm<DIM>) -> Self::Output {
+        self.compose(rhs)
     }
 }

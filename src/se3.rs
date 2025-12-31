@@ -1,4 +1,5 @@
 use nalgebra::{Matrix3, Matrix4, Rotation3, SMatrix, Translation3, Vector3};
+use std::ops::Mul;
 
 use crate::{
     lie::{HasAdjoint, LieGroup, matrix_to_array},
@@ -255,5 +256,37 @@ impl LieGroup<4> for Se3 {
 impl HasAdjoint<6> for Se3 {
     fn adjoint_matrix(&self) -> SMatrix<f64, 6, 6> {
         self.adjoint()
+    }
+}
+
+impl Mul for Se3 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self.compose(&rhs)
+    }
+}
+
+impl<'a> Mul<&'a Se3> for Se3 {
+    type Output = Se3;
+
+    fn mul(self, rhs: &'a Se3) -> Self::Output {
+        self.compose(rhs)
+    }
+}
+
+impl<'a> Mul<Se3> for &'a Se3 {
+    type Output = Se3;
+
+    fn mul(self, rhs: Se3) -> Self::Output {
+        self.compose(&rhs)
+    }
+}
+
+impl<'a, 'b> Mul<&'a Se3> for &'b Se3 {
+    type Output = Se3;
+
+    fn mul(self, rhs: &'a Se3) -> Self::Output {
+        self.compose(rhs)
     }
 }
