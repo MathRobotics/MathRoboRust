@@ -1,0 +1,3 @@
+[submodule "vendor/MathRobo"]
+	path = vendor/MathRobo
+	url = https://github.com/MathRobotics/MathRobo.git

@@ -63,10 +63,10 @@ def test_cmtm_mul_matches_compose_matrix():
         (1.0, 0.0, 0.0), -math.pi / 4.0, (1.0, -0.25, 0.75)
     )
 
-    left = mathrobors.CMTM.from_se3(base_a)
-    right = mathrobors.CMTM.from_se3(base_b)
+    left = mathrobors.SE3CMTM.from_se3(base_a)
+    right = mathrobors.SE3CMTM.from_se3(base_b)
 
     via_mul = left * right
     via_compose = left.compose(right)
 
-    approx_eq_matrix6(via_mul.matrix(), via_compose.matrix(), 1e-12)
+    approx_eq_matrix4(via_mul.mat(None), via_compose.mat(None), 1e-12)

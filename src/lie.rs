@@ -33,3 +33,34 @@ pub fn matrix_to_array<const DIM: usize>(matrix: &SMatrix<f64, DIM, DIM>) -> [[f
     }
     array
 }
+
+/// Compute repeated integrals of a matrix exponential via the power series
+/// \(\sum_{n=0}^{\infty} \frac{a^{n+k}}{(n+k)!} A^n\), where `k` is the
+/// integral order (1 for \(\int e^{sA} ds\), 2 for \(\int\int e^{sA} ds^2\)).
+pub fn matrix_exp_integral_series<const DIM: usize>(
+    generator: &SMatrix<f64, DIM, DIM>,
+    upper: f64,
+    integral_order: usize,
+) -> SMatrix<f64, DIM, DIM> {
+    assert!(integral_order > 0, "integral_order must be positive");
+
+    let mut scale = 1.0_f64;
+    for denom in 1..=integral_order {
+        scale *= upper / denom as f64;
+    }
+
+    let mut term = SMatrix::<f64, DIM, DIM>::identity() * scale;
+    let mut sum = term;
+
+    for index in 0..63 {
+        let denom = (integral_order + index + 1) as f64;
+        term = term * generator * (upper / denom);
+        sum += term;
+
+        if term.norm() <= 1e-14 {
+            break;
+        }
+    }
+
+    sum
+}

@@ -1,7 +1,7 @@
 use nalgebra::{Matrix3, Quaternion, Rotation3, UnitQuaternion};
 use std::ops::Mul;
 
-use crate::lie::{LieGroup, apply_linear, matrix_to_array};
+use crate::lie::{HasAdjoint, LieGroup, apply_linear, matrix_to_array};
 use crate::util::{skew_symmetric, vector3_from_array, vector3_to_array};
 
 /// A 3D rotation represented as an element of the special orthogonal group
@@ -12,6 +12,18 @@ pub struct So3 {
 }
 
 impl So3 {
+    pub const fn dof() -> usize {
+        3
+    }
+
+    pub const fn mat_size() -> usize {
+        3
+    }
+
+    pub const fn mat_adj_size() -> usize {
+        3
+    }
+
     /// Build an element of SO(3) from an axis and angle using Rodrigues'
     /// rotation formula. Zero-length axes fall back to the identity
     /// so the caller can safely pass unnormalized vectors.
@@ -114,9 +126,98 @@ impl So3 {
         vector3_to_array(&self.rotation.scaled_axis())
     }
 
+    /// Compute the exponential map from a tangent vector to an SO(3) rotation
+    /// matrix. The optional scale factor `a` scales the tangent vector prior to
+    /// exponentiation.
+    pub fn exp(vector: [f64; 3], a: Option<f64>) -> [[f64; 3]; 3] {
+        let scale = a.unwrap_or(1.0);
+        Self::from_rotation_vector([vector[0] * scale, vector[1] * scale, vector[2] * scale])
+            .to_matrix()
+    }
+
+    /// Compute \(\int_0^a \exp(s \hat{\omega}) ds\).
+    pub fn exp_integ(vector: [f64; 3], a: Option<f64>) -> [[f64; 3]; 3] {
+        let scale = a.unwrap_or(1.0);
+        let omega = vector3_from_array(vector);
+        let theta = omega.norm();
+        let hat = skew_symmetric(&omega);
+        let hat_sq = hat * hat;
+
+        let matrix = if theta.abs() < 1e-12 {
+            Matrix3::<f64>::identity() * scale
+                + hat * (0.5 * scale * scale)
+                + hat_sq * (scale * scale * scale / 6.0)
+        } else {
+            let angle = theta * scale;
+            let theta_sq = theta * theta;
+            let theta_cu = theta_sq * theta;
+            Matrix3::<f64>::identity() * scale
+                + hat * ((1.0 - angle.cos()) / theta_sq)
+                + hat_sq * ((angle - angle.sin()) / theta_cu)
+        };
+
+        matrix_to_array(&matrix)
+    }
+
+    /// Compute \(\int_0^a \int_0^s \exp(u \hat{\omega}) du\, ds\).
+    pub fn exp_integ2nd(vector: [f64; 3], a: Option<f64>) -> [[f64; 3]; 3] {
+        let scale = a.unwrap_or(1.0);
+        let omega = vector3_from_array(vector);
+        let theta = omega.norm();
+        let hat = skew_symmetric(&omega);
+        let hat_sq = hat * hat;
+
+        let matrix = if theta.abs() < 1e-12 {
+            Matrix3::<f64>::identity() * scale
+        } else {
+            let angle = theta * scale;
+            let theta_sq = theta * theta;
+            let theta_cu = theta_sq * theta;
+            let theta_4 = theta_sq * theta_sq;
+            Matrix3::<f64>::identity() * ((1.0 - angle.cos()) / theta_sq)
+                + hat * ((angle - angle.sin()) / theta_cu)
+                + hat_sq * ((0.5 * angle * angle - 1.0 + angle.cos()) / theta_4)
+        };
+
+        matrix_to_array(&matrix)
+    }
+
+    /// The adjoint exponential map for SO(3), identical to [`So3::exp`].
+    pub fn exp_adj(vector: [f64; 3], a: Option<f64>) -> [[f64; 3]; 3] {
+        Self::exp(vector, a)
+    }
+
+    /// The adjoint exponential integral for SO(3), identical to
+    /// [`So3::exp_integ`].
+    pub fn exp_integ_adj(vector: [f64; 3], a: Option<f64>) -> [[f64; 3]; 3] {
+        Self::exp_integ(vector, a)
+    }
+
     /// Create the skew-symmetric matrix associated with a 3D vector.
     pub fn hat(vector: [f64; 3]) -> [[f64; 3]; 3] {
         matrix_to_array(&skew_symmetric(&vector3_from_array(vector)))
+    }
+
+    /// The adjoint-space hat operator for SO(3), identical to [`So3::hat`].
+    pub fn hat_adj(vector: [f64; 3]) -> [[f64; 3]; 3] {
+        Self::hat(vector)
+    }
+
+    /// The element-space hat-commute operator for SO(3).
+    pub fn hat_commute(vector: [f64; 3]) -> [[f64; 3]; 3] {
+        Self::hat_commute_adj(vector)
+    }
+
+    /// The adjoint-space hat-commute operator for SO(3).
+    pub fn hat_commute_adj(vector: [f64; 3]) -> [[f64; 3]; 3] {
+        let hat = Self::hat_adj(vector);
+        let mut out = [[0.0_f64; 3]; 3];
+        for row in 0..3 {
+            for col in 0..3 {
+                out[row][col] = -hat[row][col];
+            }
+        }
+        out
     }
 
     /// Recover the vector that generated a skew-symmetric matrix. The inputs do
@@ -140,6 +241,61 @@ impl So3 {
             0.5 * (mat[(0, 2)] - mat[(2, 0)]),
             0.5 * (mat[(1, 0)] - mat[(0, 1)]),
         ]
+    }
+
+    /// The adjoint-space vee operator for SO(3), identical to [`So3::vee`].
+    pub fn vee_adj(matrix: [[f64; 3]; 3]) -> [f64; 3] {
+        Self::vee(matrix)
+    }
+
+    /// Approximate the tangent-space difference between two nearby rotations.
+    pub fn sub_tan_vec(val0: &Self, val1: &Self, frame: Option<&str>) -> [f64; 3] {
+        let diff = val1.as_matrix() - val0.as_matrix();
+        let matrix = match frame.unwrap_or("bframe") {
+            "bframe" => val0.inverse().as_matrix() * diff,
+            "fframe" => diff * val0.inverse().as_matrix(),
+            other => panic!("Unsupported frame: {other}"),
+        };
+        Self::vee(matrix_to_array(&matrix))
+    }
+
+    /// First-order variation of `R * arb_vec` with respect to a tangent
+    /// perturbation.
+    pub fn mat_var_x_arb_vec(
+        &self,
+        arb_vec: [f64; 3],
+        tan_var_vec: [f64; 3],
+        frame: Option<&str>,
+    ) -> [f64; 3] {
+        let jacobian = self.mat_var_x_arb_vec_jacob(arb_vec, frame);
+        let jacobian = Matrix3::<f64>::from_row_slice(&[
+            jacobian[0][0],
+            jacobian[0][1],
+            jacobian[0][2],
+            jacobian[1][0],
+            jacobian[1][1],
+            jacobian[1][2],
+            jacobian[2][0],
+            jacobian[2][1],
+            jacobian[2][2],
+        ]);
+        apply_linear(&jacobian, tan_var_vec)
+    }
+
+    /// Jacobian of the first-order variation of `R * arb_vec`.
+    pub fn mat_var_x_arb_vec_jacob(&self, arb_vec: [f64; 3], frame: Option<&str>) -> [[f64; 3]; 3] {
+        let matrix = match frame.unwrap_or("bframe") {
+            "bframe" => {
+                let commute =
+                    Matrix3::<f64>::from_row_slice(&Self::hat_commute_adj(arb_vec).concat());
+                self.as_matrix() * commute
+            }
+            "fframe" => {
+                Matrix3::<f64>::from_row_slice(&Self::hat_commute_adj(self.apply(arb_vec)).concat())
+            }
+            other => panic!("Unsupported frame: {other}"),
+        };
+        matrix_to_array(&matrix)
     }
 
     /// Export the underlying 3×3 rotation matrix.
@@ -169,6 +325,12 @@ impl LieGroup<3> for So3 {
     }
 
     fn as_matrix(&self) -> nalgebra::SMatrix<f64, 3, 3> {
+        self.rotation.matrix().clone_owned()
+    }
+}
+
+impl HasAdjoint<3> for So3 {
+    fn adjoint_matrix(&self) -> nalgebra::SMatrix<f64, 3, 3> {
         self.rotation.matrix().clone_owned()
     }
 }

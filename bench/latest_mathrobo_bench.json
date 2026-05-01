@@ -1,0 +1,328 @@
+{
+  "comparison": [
+    {
+      "name": "SO3.hat",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 0.365889222943224,
+        "std_us": 0.001025964208934811
+      },
+      "mathrobo": {
+        "mean_us": 1.195979199022986,
+        "std_us": 0.005931192358561486
+      }
+    },
+    {
+      "name": "SO3.vee",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 0.6045690240571275,
+        "std_us": 0.0029238825649025016
+      },
+      "mathrobo": {
+        "mean_us": 0.7776178438216448,
+        "std_us": 0.006789977324391523
+      }
+    },
+    {
+      "name": "SO3.exp",
+      "loops": 100000,
+      "mathrobors": {
+        "mean_us": 0.38366891629993916,
+        "std_us": 0.0024649465362759724
+      },
+      "mathrobo": {
+        "mean_us": 3.770128528121859,
+        "std_us": 0.011649319959568496
+      }
+    },
+    {
+      "name": "SO3.apply",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 0.2867296210024506,
+        "std_us": 0.00031233254439741795
+      },
+      "mathrobo": {
+        "mean_us": 1.198879283037968,
+        "std_us": 0.0021076372247190293
+      }
+    },
+    {
+      "name": "SO3wrench.hat",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 1.1456384147750214,
+        "std_us": 0.004122962232317394
+      },
+      "mathrobo": {
+        "mean_us": 1.5133045928087085,
+        "std_us": 0.0021824685206338363
+      }
+    },
+    {
+      "name": "SO3wrench.exp",
+      "loops": 100000,
+      "mathrobors": {
+        "mean_us": 0.9658477960620075,
+        "std_us": 0.0011981372596450517
+      },
+      "mathrobo": {
+        "mean_us": 3.931222272105515,
+        "std_us": 0.04126493424877241
+      }
+    },
+    {
+      "name": "SO3wrench.exp_integ",
+      "loops": 100000,
+      "mathrobors": {
+        "mean_us": 0.9720713102724403,
+        "std_us": 0.0037650148319363914
+      },
+      "mathrobo": {
+        "mean_us": 4.0593185217585415,
+        "std_us": 0.036921974165681645
+      }
+    },
+    {
+      "name": "SO3inertia.hat",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 1.0626168478047475,
+        "std_us": 0.0008467210961488982
+      },
+      "mathrobo": {
+        "mean_us": 0.7351123419357464,
+        "std_us": 0.001517351917460348
+      }
+    },
+    {
+      "name": "SO3inertia.hat_commute",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 1.0255313909146935,
+        "std_us": 0.0006139368346505101
+      },
+      "mathrobo": {
+        "mean_us": 0.7342260748846456,
+        "std_us": 0.000880912046858474
+      }
+    },
+    {
+      "name": "SE3.hat",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 0.4035689589800313,
+        "std_us": 0.0012813012342678762
+      },
+      "mathrobo": {
+        "mean_us": 1.0851216780720279,
+        "std_us": 0.008222916052255488
+      }
+    },
+    {
+      "name": "SE3.vee",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 0.7693398958072066,
+        "std_us": 0.004426829632638476
+      },
+      "mathrobo": {
+        "mean_us": 1.5957490259315819,
+        "std_us": 0.003538331523671039
+      }
+    },
+    {
+      "name": "SE3.exp",
+      "loops": 80000,
+      "mathrobors": {
+        "mean_us": 0.4376863976358436,
+        "std_us": 0.0010647912638084792
+      },
+      "mathrobo": {
+        "mean_us": 9.343394326569978,
+        "std_us": 0.0504669050421433
+      }
+    },
+    {
+      "name": "SE3.apply",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 0.263125360943377,
+        "std_us": 0.00020020848191361316
+      },
+      "mathrobo": {
+        "mean_us": 1.1777433200040832,
+        "std_us": 0.004233528020176275
+      }
+    },
+    {
+      "name": "SE3.mat_adj",
+      "loops": 120000,
+      "mathrobors": {
+        "mean_us": 0.17199168990676603,
+        "std_us": 0.008334726675996471
+      },
+      "mathrobo": {
+        "mean_us": 2.8643552916279686,
+        "std_us": 0.0028115067078687416
+      }
+    },
+    {
+      "name": "SE3wrench.mat_adj",
+      "loops": 120000,
+      "mathrobors": {
+        "mean_us": 2.241370588502226,
+        "std_us": 0.0014874189523269834
+      },
+      "mathrobo": {
+        "mean_us": 2.840489756781608,
+        "std_us": 0.00624869366017505
+      }
+    },
+    {
+      "name": "SE3wrench.mat_inv_adj",
+      "loops": 120000,
+      "mathrobors": {
+        "mean_us": 2.5456425650433325,
+        "std_us": 0.02556367614709281
+      },
+      "mathrobo": {
+        "mean_us": 3.3099850800742088,
+        "std_us": 0.008515693877760177
+      }
+    },
+    {
+      "name": "SE3wrench.hat_adj",
+      "loops": 150000,
+      "mathrobors": {
+        "mean_us": 2.446815798524767,
+        "std_us": 0.0046686370855765855
+      },
+      "mathrobo": {
+        "mean_us": 3.4678708052573106,
+        "std_us": 0.015153618135458747
+      }
+    },
+    {
+      "name": "SE3wrench.hat_commute",
+      "loops": 150000,
+      "mathrobors": {
+        "mean_us": 1.7393146959754329,
+        "std_us": 0.003569917993569208
+      },
+      "mathrobo": {
+        "mean_us": 2.0194153585471213,
+        "std_us": 0.0042880297493642664
+      }
+    },
+    {
+      "name": "SE3wrench.hat_commute_adj",
+      "loops": 150000,
+      "mathrobors": {
+        "mean_us": 3.4622885643815002,
+        "std_us": 0.018176195370112933
+      },
+      "mathrobo": {
+        "mean_us": 5.125797744064282,
+        "std_us": 0.028202181135415234
+      }
+    },
+    {
+      "name": "SE3wrench.exp",
+      "loops": 80000,
+      "mathrobors": {
+        "mean_us": 1.1184879051870666,
+        "std_us": 0.003941370396622573
+      },
+      "mathrobo": {
+        "mean_us": 12.94256898254389,
+        "std_us": 0.07388160336508841
+      }
+    },
+    {
+      "name": "SE3wrench.exp_integ",
+      "loops": 80000,
+      "mathrobors": {
+        "mean_us": 1.5374579498893581,
+        "std_us": 0.001940787980709286
+      },
+      "mathrobo": {
+        "mean_us": 15.03345928300405,
+        "std_us": 0.04987987298714833
+      }
+    },
+    {
+      "name": "SE3wrench.mat_var_x_arb_vec",
+      "loops": 80000,
+      "mathrobors": {
+        "mean_us": 7.325577535666525,
+        "std_us": 0.011201848028480847
+      },
+      "mathrobo": {
+        "mean_us": 9.313742337399162,
+        "std_us": 0.01261922474035088
+      }
+    }
+  ],
+  "rust_only": [
+    {
+      "name": "SO3.apply_into",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 0.2337875368539244,
+        "std_us": 0.00039381203847234126
+      }
+    },
+    {
+      "name": "SE3.apply_into",
+      "loops": 200000,
+      "mathrobors": {
+        "mean_us": 0.22873704903759062,
+        "std_us": 0.0001961321210863678
+      }
+    },
+    {
+      "name": "SE3.exp_into",
+      "loops": 120000,
+      "mathrobors": {
+        "mean_us": 0.32311376475263387,
+        "std_us": 0.0005437691178201666
+      }
+    },
+    {
+      "name": "SE3.mat_adj_into",
+      "loops": 120000,
+      "mathrobors": {
+        "mean_us": 0.09546383342240006,
+        "std_us": 0.00031259564399230885
+      }
+    },
+    {
+      "name": "SE3inertia.hat",
+      "loops": 150000,
+      "mathrobors": {
+        "mean_us": 5.98818067725127,
+        "std_us": 0.014984125115287596
+      }
+    },
+    {
+      "name": "SE3inertia.hat_commute",
+      "loops": 150000,
+      "mathrobors": {
+        "mean_us": 3.892368250681708,
+        "std_us": 0.003196013382106187
+      }
+    }
+  ],
+  "skipped_vendor_cases": [
+    {
+      "name": "SE3inertia.hat",
+      "reason": "vendored MathRobo currently raises RecursionError in the numpy path"
+    },
+    {
+      "name": "SE3inertia.hat_commute",
+      "reason": "vendored MathRobo currently raises ValueError in the numpy path"
+    }
+  ]
+}

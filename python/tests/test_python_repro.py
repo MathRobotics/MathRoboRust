@@ -1,6 +1,7 @@
 import math
-import pytest
+
 import mathrobors
+import numpy as np
 
 
 def approx_eq(a, b, tol=1e-12):
@@ -115,112 +116,96 @@ def test_python_functions_match_original_names():
     exp_matrix = mathrobors.SO3.exp((0.1, -0.2, 0.3), None)
     approx_eq_matrix(exp_matrix, mathrobors.SO3.from_rotation_vector((0.1, -0.2, 0.3)).matrix(), 1e-12)
 
-@pytest.mark.dev
-def test_compare_mathrobo():
-    import mathrobo as mr
-    import numpy as np
 
-    rotation = mathrobors.SO3.from_axis_angle((0.0, 0.0, 1.0), math.pi / 2.0)
-    rotation_mr = mr.SO3.set_mat(mr.SO3.exp((0.0, 0.0, 1.0), math.pi / 2.0))
+def test_public_api_returns_numpy_arrays():
+    rotation = mathrobors.SO3.from_axis_angle((0.0, 0.0, 1.0), math.pi / 4.0)
+    transform = mathrobors.SE3.from_parts(rotation, (0.25, -0.5, 0.75))
 
-    assert rotation.matrix() == rotation_mr.mat().tolist()
-    assert rotation.quaternion() == rotation_mr.quaternion().tolist()
+    assert isinstance(rotation.mat(), np.ndarray)
+    assert isinstance(rotation.quaternion(), np.ndarray)
+    assert isinstance(rotation.rotation_vector(), np.ndarray)
+    assert isinstance(rotation @ np.array([1.0, 0.0, 0.0]), np.ndarray)
 
-    eye = mathrobors.SO3.eye()
-    eye_mr = mr.SO3.eye()
-    assert eye.mat() == eye_mr.mat().tolist()
+    assert isinstance(transform.mat(), np.ndarray)
+    assert isinstance(transform.pos(), np.ndarray)
+    assert isinstance(transform.rot(), np.ndarray)
+    assert isinstance(transform @ np.array([1.0, 0.0, 0.0]), np.ndarray)
+    assert isinstance(transform @ np.array([0.1, -0.2, 0.3, 1.0, -2.0, 3.0]), np.ndarray)
 
-    hat = mathrobors.SO3.hat((0.2, 0.3, 0.4))
-    hat_mr = mr.SO3.hat(np.array([0.2, 0.3, 0.4]))
-    assert hat == hat_mr.tolist()
 
-    vee = mathrobors.SO3.vee(hat)
-    vee_mr = mr.SO3.vee(hat_mr)
-    assert vee == vee_mr.tolist()
+def test_wrench_variants_follow_expected_adjoint_relations():
+    rotation = mathrobors.SO3.from_axis_angle((0.0, 0.0, 1.0), math.pi / 3.0)
+    transform = mathrobors.SE3.from_parts(rotation, (0.25, -0.5, 0.75))
+    wrench = mathrobors.SE3wrench(transform.rot(), transform.pos())
+    expected_hat = [[-value for value in row] for row in mathrobors.SO3.hat((0.2, 0.3, 0.4))]
 
-    commute = mathrobors.SO3.hat_commute((0.2, 0.3, 0.4))
-    commute_mr = mr.SO3.hat_commute(np.array([0.2, 0.3, 0.4]))
-    assert commute == commute_mr.tolist()
+    approx_eq_matrix(mathrobors.SO3wrench.hat((0.2, 0.3, 0.4)), expected_hat, 1e-12)
+    approx_eq_matrix4(wrench.mat(), transform.mat(), 1e-12)
+    approx_eq_matrix4(wrench.mat_inv(), transform.mat_inv(), 1e-12)
+    expected_adj = list(map(list, zip(*transform.mat_inv_adj())))
+    for row in range(6):
+        for col in range(6):
+            assert abs(wrench.mat_adj()[row][col] - expected_adj[row][col]) < 1e-12
 
-    exp = mathrobors.SO3.exp((0.1, -0.2, 0.3), None)
-    exp_mr = mr.SO3.exp(np.array([0.1, -0.2, 0.3]))
-    assert exp == exp_mr.tolist()
 
-@pytest.mark.dev
-@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
-def test_so3_exp_benchmark(benchmark, impl):
-    import numpy as np
-    import mathrobo as mr
+def test_se3wrench_operator_contract():
+    left = mathrobors.SE3wrench(
+        mathrobors.SO3.exp((0.1, -0.2, 0.15), None), (0.25, -0.4, 0.6)
+    )
+    right = mathrobors.SE3wrench(
+        mathrobors.SO3.exp((-0.05, 0.1, 0.2), None), (-0.2, 0.3, 0.1)
+    )
+    wrench_vec = np.array([0.2, -0.1, 0.3, 1.0, -0.5, 0.25], dtype=float)
 
-    v = (0.1, -0.2, 0.3)
-    v_np = np.array(v)
+    composed = left @ right
+    assert isinstance(composed, mathrobors.SE3wrench)
+    assert isinstance(left @ wrench_vec, np.ndarray)
+    assert isinstance(left @ np.eye(6, dtype=float), np.ndarray)
+    approx_eq_matrix4(composed.mat(), left.mat() @ right.mat(), 1e-12)
+    approx_eq(left @ wrench_vec, left.mat_adj() @ wrench_vec, 1e-12)
 
-    if impl == "mathrobors":
-        fn = lambda: mathrobors.SO3.exp(v, None)
-    else:
-        fn = lambda: mr.SO3.exp(v_np)
 
-    benchmark(fn)
+def test_inertia_variants_produce_expected_shapes():
+    so3_hat = mathrobors.SO3inertia.hat((1.0, 2.0, 3.0, 0.4, 0.5, 0.6))
+    se3_hat = mathrobors.SE3inertia.hat((2.0, 0.25, -0.5, 0.75, 1.0, 2.0, 3.0, 0.4, 0.5, 0.6))
+    se3_commute = mathrobors.SE3inertia.hat_commute((0.1, -0.2, 0.3, 1.0, -2.0, 3.0))
 
-@pytest.mark.dev
-@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
-def test_so3_hat_benchmark(benchmark, impl):
-    import numpy as np
-    import mathrobo as mr
+    assert len(so3_hat) == 3 and len(so3_hat[0]) == 3
+    assert len(se3_hat) == 6 and len(se3_hat[0]) == 6
+    assert len(se3_commute) == 6 and len(se3_commute[0]) == 10
 
-    w = (0.2, 0.3, 0.4)
-    w_np = np.array(w)
 
-    if impl == "mathrobors":
-        fn = lambda: mathrobors.SO3.hat(w)
-    else:
-        fn = lambda: mr.SO3.hat(w_np)
+def test_se3inertia_block_formulas_are_consistent():
+    vec10 = (2.0, 0.25, -0.5, 0.75, 1.0, 2.0, 3.0, 0.4, 0.5, 0.6)
+    twist = (0.1, -0.2, 0.3, 0.4, -0.5, 0.6)
 
-    benchmark(fn)
+    hat = mathrobors.SE3inertia.hat(vec10)
+    expected_hat = [[0.0] * 6 for _ in range(6)]
+    so3_inertia = mathrobors.SO3inertia.hat(vec10[4:10])
+    so3_wrench = mathrobors.SO3wrench.hat(vec10[1:4])
+    so3_hat = mathrobors.SO3.hat(vec10[1:4])
+    for r in range(3):
+        for c in range(3):
+            expected_hat[r][c] = so3_inertia[r][c]
+            expected_hat[r][c + 3] = so3_wrench[r][c]
+            expected_hat[r + 3][c] = so3_hat[r][c]
+            expected_hat[r + 3][c + 3] = vec10[0] if r == c else 0.0
+    approx_eq_matrix4([row[:4] for row in hat[:4]], [row[:4] for row in expected_hat[:4]], 1e-12)
+    for r in range(6):
+        approx_eq(hat[r], expected_hat[r], 1e-12)
 
-@pytest.mark.dev
-@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
-def test_so3_vee_benchmark(benchmark, impl):
-    import numpy as np
-    import mathrobo as mr
-
-    w = (0.2, 0.3, 0.4)
-    w_np = np.array(w)
-
-    if impl == "mathrobors":
-        hat = mathrobors.SO3.hat(w)
-        fn = lambda: mathrobors.SO3.vee(hat)
-    else:
-        hat = mr.SO3.hat(w_np)
-        fn = lambda: mr.SO3.vee(hat)
-
-    benchmark(fn)
-
-@pytest.mark.dev
-@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
-def test_so3_hat_commute_benchmark(benchmark, impl):
-    import numpy as np
-    import mathrobo as mr
-
-    w = (0.2, 0.3, 0.4)
-    w_np = np.array(w)
-
-    if impl == "mathrobors":
-        fn = lambda: mathrobors.SO3.hat_commute(w)
-    else:
-        fn = lambda: mr.SO3.hat_commute(w_np)
-
-    benchmark(fn)
-
-@pytest.mark.dev
-@pytest.mark.parametrize("impl", ["mathrobors", "mathrobo"])
-def test_so3_eye_benchmark(benchmark, impl):
-    import mathrobo as mr
-
-    if impl == "mathrobors":
-        fn = lambda: mathrobors.SO3.eye()
-    else:
-        fn = lambda: mr.SO3.eye()
-
-    benchmark(fn)
-
+    commute = mathrobors.SE3inertia.hat_commute(twist)
+    expected_commute = [[0.0] * 10 for _ in range(6)]
+    so3_wrench_commute = mathrobors.SO3wrench.hat_commute(twist[3:6])
+    so3_commute = mathrobors.SO3.hat_commute(twist[0:3])
+    so3_inertia_commute = mathrobors.SO3inertia.hat_commute(twist[0:3])
+    for r in range(3):
+        for c in range(3):
+            expected_commute[r][c + 1] = so3_wrench_commute[r][c]
+            expected_commute[r + 3][c + 1] = so3_commute[r][c]
+        for c in range(6):
+            expected_commute[r][c + 4] = so3_inertia_commute[r][c]
+    for r in range(3):
+        expected_commute[r + 3][0] = twist[r + 3]
+    for r in range(6):
+        approx_eq(commute[r], expected_commute[r], 1e-12)

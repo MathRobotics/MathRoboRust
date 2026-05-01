@@ -16,11 +16,17 @@ module-name = "mathrobors"
 cargo-manifest-path = "Cargo.toml"
 
 [tool.uv.sources]
-mathrobo = { git = "https://github.com/MathRobotics/MathRobo", rev = "develop" }
+mathrobo = { path = "../vendor/MathRobo" }
 
 [dependency-groups]
-dev = ["maturin>=1.5", "pytest-benchmark>=5.2.3", "mathrobo",]
+dev = [
+    "maturin>=1.5",
+    "pytest-benchmark>=5.2.3",
+    "mathrobo",
+    "cffi>=2.0.0",
+]
 
 [tool.pytest.ini_options]
+testpaths = ["tests", "benchmarks"]
 addopts = "-m 'not dev'"
 markers = ["dev: development-only checks (not run by default)"]

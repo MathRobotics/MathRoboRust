@@ -19,3 +19,25 @@ jobs:
 
       - name: Run tests
         run: cargo test --all --all-targets
+
+  mathrobo-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install MathRobo parity dependencies
+        run: python -m pip install numpy "jax[cpu]"
+
+      - name: Run MathRobo parity tests
+        run: cargo test --test mathrobo_parity

@@ -281,3 +281,74 @@ fn se3_from_matrix_round_trip() {
     );
     approx_eq(&transform.translation(), &rebuilt.translation(), 1e-12);
 }
+
+#[test]
+fn cmtm_set_mat_adj_round_trip_for_so3() {
+    let rotation = RustSo3::from_rotation_vector([0.25, -0.35, 0.1]);
+    let cmtm = RotationalCmtm::from_so3_with_derivatives(
+        &rotation,
+        vec![[0.1, -0.2, 0.3], [0.05, 0.01, -0.04]],
+    );
+
+    let rebuilt = RotationalCmtm::set_mat_adj(&cmtm.mat_adj(None));
+    approx_eq_matrix(&rebuilt.to_matrix(), &cmtm.to_matrix(), 1e-12);
+    assert_eq!(rebuilt.vecs(None).len(), cmtm.vecs(None).len());
+    for (left, right) in rebuilt.vecs(None).iter().zip(cmtm.vecs(None).iter()) {
+        approx_eq(left, right, 1e-10);
+    }
+}
+
+#[test]
+fn cmtm_set_mat_adj_round_trip_for_se3() {
+    let transform = RustSe3::from_parts(
+        RustSo3::from_rotation_vector([0.15, -0.2, 0.05]),
+        [0.4, -0.6, 0.8],
+    );
+    let cmtm = RustCmtm::from_se3_with_derivatives(
+        &transform,
+        vec![
+            [0.1, -0.05, 0.03, 1.0, -0.4, 0.2],
+            [0.02, 0.01, -0.04, -0.3, 0.6, 0.5],
+        ],
+    );
+
+    let rebuilt = RustCmtm::set_mat_adj(&cmtm.mat_adj(None));
+    for (left_row, right_row) in rebuilt.to_matrix().iter().zip(cmtm.to_matrix().iter()) {
+        approx_eq(left_row, right_row, 1e-12);
+    }
+    assert_eq!(rebuilt.vecs(None).len(), cmtm.vecs(None).len());
+    for (left, right) in rebuilt.vecs(None).iter().zip(cmtm.vecs(None).iter()) {
+        approx_eq(left, right, 1e-10);
+    }
+}
+
+#[test]
+fn cmtm_tangent_matrices_are_invertible() {
+    let transform = RustSe3::from_parts(
+        RustSo3::from_rotation_vector([0.15, -0.2, 0.05]),
+        [0.4, -0.6, 0.8],
+    );
+    let cmtm = RustCmtm::from_se3_with_derivatives(
+        &transform,
+        vec![
+            [0.1, -0.05, 0.03, 1.0, -0.4, 0.2],
+            [0.02, 0.01, -0.04, -0.3, 0.6, 0.5],
+        ],
+    );
+
+    let tangent = cmtm.tangent_mat(None);
+    let tangent_inv = cmtm.tangent_mat_inv(None);
+    let product = tangent * tangent_inv;
+    let identity = DMatrix::<f64>::identity(product.nrows(), product.ncols());
+    for (actual, expected) in product.iter().zip(identity.iter()) {
+        assert!((actual - expected).abs() < 1e-10);
+    }
+
+    let tangent_cm = cmtm.tangent_mat_cm(None);
+    let tangent_cm_inv = cmtm.tangent_mat_cm_inv(None);
+    let product_cm = tangent_cm * tangent_cm_inv;
+    let identity_cm = DMatrix::<f64>::identity(product_cm.nrows(), product_cm.ncols());
+    for (actual, expected) in product_cm.iter().zip(identity_cm.iter()) {
+        assert!((actual - expected).abs() < 1e-10);
+    }
+}
